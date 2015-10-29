@@ -1,0 +1,62 @@
+<%
+import org.exoplatform.services.security.ConversationState;
+import org.exoplatform.services.security.MembershipEntry;
+import org.exoplatform.commons.utils.PropertyManager;
+
+def rcontext = _ctx.getRequestContext() ;
+def typeOfRelation = uicomponent.getTypeOfRelation();
+def spaceURL = uicomponent.getSpaceURL();
+    
+def params = """ {
+  uicomponentId: '${uicomponent.id}',
+	typeOfRelation: '$typeOfRelation',
+	spaceURL: '$spaceURL',
+	typeOfSuggest: 'space'
+} """
+
+rcontext.getJavascriptManager().require("SHARED/jquery", "jq")
+        .require("SHARED/bts_tooltip").addScripts("jq('*[rel=\"tooltip\"]').tooltip();")
+        .require("SHARED/social-ui-space-search", "socialUISpaceSearch").addScripts("socialUISpaceSearch.init($params);")
+        .require("SHARED/uiForm");
+//
+uicomponent.initPlaceholder();
+def createSpaceMembership = PropertyManager.getProperty("bluebook.space.create.membership")
+if(createSpaceMembership == null) {
+  createSpaceMembership = MembershipEntry.ANY_TYPE + ":/platform/administrators";
+}
+
+def createSpaceMembershipSplitted = createSpaceMembership.split(":")
+if(createSpaceMembershipSplitted.length != 2) {
+  createSpaceMembership = MembershipEntry.ANY_TYPE + ":/platform/administrators"
+  createSpaceMembershipSplitted = createSpaceMembership.split(":")
+}
+
+def userIdentity = ConversationState.getCurrent().getIdentity()
+def canCreateSpace = false
+
+if(createSpaceMembershipSplitted[0].equals(MembershipEntry.ANY_TYPE)) {
+  canCreateSpace = userIdentity.isMemberOf(createSpaceMembershipSplitted[1])
+} else {
+  canCreateSpace = userIdentity.isMemberOf(createSpaceMembershipSplitted[1], createSpaceMembershipSplitted[0])
+}
+%>
+<div class="uiSpaceSearch">
+<% uiform.begin();%>
+	<div class="uiGrayLightBox clearfix">
+	<% if(canCreateSpace) { %>
+		<button class="btn btn-primary pull-left" type="button" onclick="<%= uicomponent.event("AddSpace") %>">
+			<i class="uiIconSocSimplePlus uiIconSocWhite"></i><%=_ctx.appRes("UISpaceSearch.label.AddNewSpace")%>
+		</button>
+	<% } %>
+		<div class="uiSearchInput pull-right searchWithIcon">
+		    <a data-original-title="Search" class="advancedSearch" rel="tooltip" data-placement="bottom" onclick="<%=uicomponent.event("Search")%>" href="javascript:void(0)">
+		    	<i class="uiIconSearch uiIconLightGray"></i>
+		    </a>
+			<%uiform.renderField(uicomponent.SPACE_SEARCH); %>
+		</div>
+		<button type="button" class="btn hide" id="SearchButton" onclick="<%=uicomponent.event("Search")%>"><%=_ctx.appRes("UISpaceSearch.label.Search")%></button>
+	</div>
+ 
+	<% uiform.end();%>
+	<div class="uiPopupMySpaces"><%uicomponent.renderChild(org.exoplatform.social.webui.composer.PopupContainer.class);%></div>
+</div>
